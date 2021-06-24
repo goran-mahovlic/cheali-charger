@@ -32,28 +32,11 @@
 
 #include "TxSoftSerial.h"
 
-# if defined ( __GNUC__ )
-#define RXBUFSIZE 32
-#else
-#define RXBUFSIZE 1024
-#endif
-
-/*---------------------------------------------------------------------------------------------------------*/
-/* Global variables                                                                                        */
-/*---------------------------------------------------------------------------------------------------------*/
-uint8_t g_u8RecData[RXBUFSIZE]  = {0};
-
-volatile uint32_t g_u32comRbytes = 0;
-volatile uint32_t g_u32comRhead  = 0;
-volatile uint32_t g_u32comRtail  = 0;
-volatile int32_t g_bWait         = 1;
-
 namespace Serial {
 void empty(){}
 void emptyUint8(uint8_t c){}
 
 void UART_TEST_HANDLE(void);
-void UART_FunctionTest(void);
 
 void (*write)(uint8_t c) = emptyUint8;
 void (*flush)() = empty;
@@ -103,48 +86,6 @@ void  initialize() {
     NVIC_EnableIRQ(UART0_IRQn);
 
     TxSoftSerial::initialize();
-}
-
-void UART0_IRQHandler(void)
-{
-	UART_TEST_HANDLE();
-}
-
-/*---------------------------------------------------------------------------------------------------------*/
-/* UART Callback function                                                                                  */
-/*---------------------------------------------------------------------------------------------------------*/
-void UART_TEST_HANDLE()
-{
-	UART_DISABLE_INT(UART0, (UART_IER_RDA_IEN_Msk | UART_IER_RTO_IEN_Msk));
-    uint8_t u8InChar = 0xFF;
-    uint32_t u32IntSts = UART0->ISR;
-
-    if(u32IntSts & UART_ISR_RDA_INT_Msk)
-    {
-
-        /* Get all the input characters */
-        while(UART_IS_RX_READY(UART0))
-        {
-            /* Get the character from UART Buffer */
-            u8InChar = UART_READ(UART0);
-
-            if(u8InChar == '0')
-            {
-                g_bWait = FALSE;
-            }
-
-            /* Check if buffer full */
-            if(g_u32comRbytes < RXBUFSIZE)
-            {
-                /* Enqueue the character */
-                g_u8RecData[g_u32comRtail] = u8InChar;
-                g_u32comRtail = (g_u32comRtail == (RXBUFSIZE - 1)) ? 0 : (g_u32comRtail + 1);
-                g_u32comRbytes++;
-            }
-        }
-        Screen::displayMonitorError();
-    }
-    UART_ENABLE_INT(UART0, (UART_IER_RDA_IEN_Msk | UART_IER_RTO_IEN_Msk));
 }
 
 } // namespace Serial

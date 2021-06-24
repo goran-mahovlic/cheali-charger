@@ -24,9 +24,25 @@
 #include "irq_priority.h"
 #include "Settings.h"
 #include "Serial.h"
+#include "Screen.h"
 
 #include "IO.h"
 
+# if defined ( __GNUC__ )
+#define RXBUFSIZE 32
+#else
+#define RXBUFSIZE 1024
+#endif
+
+/*---------------------------------------------------------------------------------------------------------*/
+/* Global variables                                                                                        */
+/*---------------------------------------------------------------------------------------------------------*/
+uint8_t g_u8RecData[RXBUFSIZE]  = {0};
+
+volatile uint32_t g_u32comRbytes = 0;
+volatile uint32_t g_u32comRhead  = 0;
+volatile uint32_t g_u32comRtail  = 0;
+volatile int32_t g_bWait         = 1;
 
 namespace TxHardSerial {
 
@@ -88,11 +104,50 @@ extern "C"
 {
 void UART0_IRQHandler(void) {
     uint16_t i = tail_.load(std::memory_order_relaxed);
+    NVIC_DisableIRQ(UART0_IRQn);
+    uint8_t u8InChar = 0xFF;
+    uint32_t u32IntSts = UART0->ISR;
+
+    if(u32IntSts & UART_ISR_RDA_INT_Msk)
+    {
+    	NVIC_DisableIRQ(UART0_IRQn);
+        /* Get all the input characters */
+        while(UART_IS_RX_READY(UART0))
+        {
+            /* Get the character from UART Buffer */
+            u8InChar = UART_READ(UART0);
+
+
+            if(u8InChar == '0')
+            {
+                g_bWait = FALSE;
+            }
+
+            else if(u8InChar == 'a'){
+            	Screen::displayMonitorError();
+            }
+
+            /* Check if buffer full */
+            if(g_u32comRbytes < RXBUFSIZE)
+            {
+                /* Enqueue the character */
+                g_u8RecData[g_u32comRtail] = u8InChar;
+                g_u32comRtail = (g_u32comRtail == (RXBUFSIZE - 1)) ? 0 : (g_u32comRtail + 1);
+                g_u32comRbytes++;
+            }
+        }
+
+        NVIC_EnableIRQ(UART0_IRQn);
+    }
+
+/*
     if(i == head_.load(std::memory_order_acquire)) {
         if((UART0->FSR & UART_FSR_TE_FLAG_Msk) == 0)
-            NVIC_DisableIRQ(UART0_IRQn);
+           NVIC_DisableIRQ(UART0_IRQn);
         return;
     }
+*/
+/*
     while((UART0->FSR & UART_FSR_TX_FULL_Msk) == 0) {
         i = (i + 1) % Tx_BUFFER_SIZE;
         UART_WRITE(UART0, txBuffer_[i]);
@@ -101,6 +156,7 @@ void UART0_IRQHandler(void) {
             break;
         }
     }
+    */
 }
 }
 
