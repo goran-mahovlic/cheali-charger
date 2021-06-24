@@ -36,6 +36,21 @@ namespace cpu {
         CLK_WaitClockReady(CLK_CLKSTATUS_XTL12M_STB_Msk);
 
         CLK_SetCoreClock(FREQ_50MHZ);
+
+        /* Enable UART module clock */
+        CLK_EnableModuleClock(UART0_MODULE);
+
+        /* Select UART module clock source */
+        CLK_SetModuleClock(UART0_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
+
+        /*---------------------------------------------------------------------------------------------------------*/
+        /* Init I/O Multi-function                                                                                 */
+        /*---------------------------------------------------------------------------------------------------------*/
+
+        /* Set P3 multi-function pins for UART0 RXD and TXD */
+        SYS->P3_MFP &= ~(SYS_MFP_P30_Msk);
+        SYS->P3_MFP |= (SYS_MFP_P30_RXD0);
+
         SYS_LockReg();
     }
 }
