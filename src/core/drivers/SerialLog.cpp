@@ -27,12 +27,15 @@
 #include "SerialLog.h"
 #include "AnalogInputsPrivate.h"
 #include "Balancer.h"
+#include "Time.h"
 
 #ifdef ENABLE_SERIAL_LOG
 #include "Serial.h"
 #endif //ENABLE_SERIAL_LOG
 
 #include "Monitor.h"
+
+#define BB3
 
 void LogDebug_run() __attribute__((weak));
 void LogDebug_run()
@@ -63,18 +66,20 @@ namespace SerialLog {
             BALANCER_PORTS_GT_6(AnalogInputs::Vb7,AnalogInputs::Vb8,)
     };
 
-
-
 void sendTime();
+void dlogInit();
+void dlogDeInit();
 
 #ifdef ENABLE_SERIAL_LOG
 
 void serialBegin()
 {
     Serial::begin(settings.getUARTspeed());
+    dlogInit();
 }
 void serialEnd()
 {
+	dlogDeInit();
     Serial::flush();
     Serial::end();
 }
@@ -228,14 +233,21 @@ void printNL()
 
 void sendEnd()
 {
+	#ifndef BB3
     //checksum
-    printUInt(CRC);
+    	printUInt(CRC);
+	#endif
     printNL();
 }
 
 void sendChannel1()
 {
+
+
+
+#ifndef BB3
     sendHeader(1);
+
     //analog inputs
     for(uint8_t i=0;i < sizeOfArray(channel1);i++) {
         AnalogInputs::Name name = pgm::read(&channel1[i]);
@@ -261,10 +273,27 @@ void sendChannel1()
     printD();
 
     sendEnd();
+#else
+    AnalogInputs::Name nameVoltage = pgm::read(&channel1[0]);
+    uint16_t v = AnalogInputs::getRealValue(nameVoltage);
+    printString("SENS:DLOG:TRACE:DATA ");
+    uint16_t Veee = v/1000;
+    printUInt(Veee);
+    printString(".");
+    v = (v-(Veee*1000));
+    printUInt(v);
+    printString(", ");
+    //5,6
+    AnalogInputs::Name nameCurrent = pgm::read(&channel1[1]);
+    uint16_t i = AnalogInputs::getRealValue(nameCurrent);
+    printUInt(i);
+    sendEnd();
+#endif
 }
 
 void sendChannel2(bool adc)
 {
+#ifndef BB3
     sendHeader(2);
     ANALOG_INPUTS_FOR_ALL(it) {
         uint16_t v;
@@ -283,10 +312,12 @@ void sendChannel2(bool adc)
     printUInt(pidV);
     printD();
     sendEnd();
+#endif
 }
 
 void sendChannel3()
 {
+#ifndef BB3
     sendHeader(3);
 #ifdef    ENABLE_STACK_INFO //ENABLE_SERIAL_LOG
     printUInt(StackInfo::getNeverUsedStackSize());
@@ -295,8 +326,65 @@ void sendChannel3()
     printD();
 #endif
     sendEnd();
+#endif
 }
 
+void dlogInit(){
+	//printString("DISP:TEXT:CLE\r\n");
+
+	printString("DISP:TEXT 'Imax B6 in controll!'\r\n");
+	Time::delay(1000);
+	printString("DISP:TEXT:CLE\r\n");
+	Time::delay(1000);
+	printString("DISP:TEXT 'Data log will start in 10 sec...'\r\n");
+	Time::delay(1000);
+	printString("SENS:DLOG:TRAC:X:UNIT SECO\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:X:STEP 0.01\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:X:RANG:MIN 0\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:X:RANG:MAX 20\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:X:LAB \"t\"\r\n");
+	Time::delay(500);
+	printString("SENS:DLOG:TRAC:Y1:UNIT VOLT\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y1:RANG:MIN 0\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y1:RANG:MAX 12\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y2:UNIT AMPER\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y2:RANG:MIN 0\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y2:RANG:MAX 10000\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:X:SCAL LIN\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:Y:SCAL LIN\r\n");
+	Time::delay(200);
+	printString("SENS:DLOG:TRAC:REM \"Imax B6 remark\"\r\n");
+	Time::delay(500);
+	printString("INIT:DLOG:TRACE \"/Recordings/imaxB6.dlog\"\r\n");
+	Time::delay(500);
+	printString("SENS:DLOG:TRAC:BOOK \"Start\"\r\n");
+	Time::delay(500);
+	printString("DISP:TEXT:CLE\r\n");
+	Time::delay(1000);
+}
+
+void dlogDeInit(){
+	Time::delay(1000);
+	printString("SENS:DLOG:TRAC:BOOK \"Stop\"\r\n");
+	Time::delay(2000);
+	printString("ABOR:DLOG\r\n");
+	Time::delay(2000);
+	printString("DISP:TEXT \"Imax B6 checking out!\"\r\n");
+	Time::delay(2000);
+	printString("DISP:TEXT:CLE\r\n");
+	Time::delay(1000);
+}
 
 void sendTime()
 {
@@ -314,7 +402,6 @@ void sendTime()
 
     if(uart > Settings::Debug)
         sendChannel3();
-
 }
 
 } //namespace SerialLog
