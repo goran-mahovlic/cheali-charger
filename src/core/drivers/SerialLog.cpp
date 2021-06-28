@@ -39,6 +39,8 @@
 #define BB3
 uint8_t small_delay = 100;
 uint16_t big_delay = 500;
+uint16_t Vtmp;
+uint16_t v;
 
 void LogDebug_run() __attribute__((weak));
 void LogDebug_run()
@@ -254,7 +256,7 @@ void sendChannel1()
     //analog inputs
     for(uint8_t i=0;i < sizeOfArray(channel1);i++) {
         AnalogInputs::Name name = pgm::read(&channel1[i]);
-        uint16_t v = AnalogInputs::getRealValue(name);
+        v = AnalogInputs::getRealValue(name);
         printUInt(v);
         printD();
     }
@@ -279,12 +281,12 @@ void sendChannel1()
 #else
     /*
     AnalogInputs::Name nameVoltage = pgm::read(&channel1[0]);
-    uint16_t v = AnalogInputs::getRealValue(nameVoltage);
+    v = AnalogInputs::getRealValue(nameVoltage);
     printString("SENS:DLOG:TRACE:DATA ");
-    uint16_t Veee = v/1000;
-    printUInt(Veee);
+    uint16_t Vtmp = v/1000;
+    printUInt(Vtmp);
     printString(".");
-    v = (v-(Veee*1000));
+    v = (v-(Vtmp*1000));
     printUInt(v);
     printString(", ");
     //5,6
@@ -298,8 +300,20 @@ void sendChannel1()
 
     for(uint8_t i=0;i < 8;i++) {
         AnalogInputs::Name name = pgm::read(&channel1[i]);
-        uint16_t v = AnalogInputs::getRealValue(name);
-        if(i==5){
+        v = AnalogInputs::getRealValue(name);
+        if (i==0 || i==1 || i==2 || i==7){
+            Vtmp = v/1000;
+            printUInt(Vtmp);
+            printString(".");
+            v = (v-(Vtmp*1000));
+        }
+        else if (i==3 || i==4 || i==6){
+            Vtmp = v/100;
+            printUInt(Vtmp);
+            printString(".");
+            v = (v-(Vtmp*100));
+        }
+        else if(i==5){
         	v=0;
         }
         printUInt(v);
@@ -310,15 +324,24 @@ void sendChannel1()
 //        printUInt(TheveninMethod::getReadableRthCell(i));
 //        printString(", ");
 //    }
-
-
-    printUInt(TheveninMethod::getReadableBattRth());
+    v = TheveninMethod::getReadableBattRth();
+    Vtmp = v/1000;
+    printUInt(Vtmp);
+    printString(".");
+    v = (v-(Vtmp*1000));
+    printUInt(v);
     printString(", ");
 
-    printUInt(TheveninMethod::getReadableWiresRth());
+    v = TheveninMethod::getReadableWiresRth();
+    Vtmp = v/1000;
+    printUInt(Vtmp);
+    printString(".");
+    v = (v-(Vtmp*1000));
+    printUInt(v);
     printString(", ");
 
     printUInt(Monitor::getChargeProcent());
+
     sendEnd();
     //printD();
 
@@ -330,7 +353,6 @@ void sendChannel2(bool adc)
 #ifndef BB3
     sendHeader(2);
     ANALOG_INPUTS_FOR_ALL(it) {
-        uint16_t v;
         if(adc) v = AnalogInputs::getAvrADCValue(it);
         else    v = AnalogInputs::getRealValue(it);
         printUInt(v);
@@ -386,7 +408,7 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:X:LAB \"t\"\r\n");
 	Time::delay(big_delay);
-	// Vout
+	// Vout 0
 	Screen::displayStrings(PSTR("Setting Vout"));
 	printString("SENS:DLOG:TRAC:Y1:UNIT VOLT\r\n");
 	Time::delay(small_delay);
@@ -394,9 +416,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y1:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y1:RANG:MAX 12000\r\n");
+	printString("SENS:DLOG:TRAC:Y1:RANG:MAX 12\r\n");
 	Time::delay(big_delay);
-	// Iout
+	// Iout 1
 	Screen::displayStrings(PSTR("Setting Iout"));
 	printString("SENS:DLOG:TRAC:Y2:UNIT AMPE\r\n");
 	Time::delay(small_delay);
@@ -404,9 +426,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y2:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y2:RANG:MAX 50000\r\n");
+	printString("SENS:DLOG:TRAC:Y2:RANG:MAX 5\r\n");
 	Time::delay(big_delay);
-	// Cout
+	// Cout 2
 	Screen::displayStrings(PSTR("Setting Cout"));
 	//printString("SENS:DLOG:TRAC:Y3:UNIT Ah\r\n");
 	//Time::delay(small_delay);
@@ -414,9 +436,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y3:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y3:RANG:MAX 50000\r\n");
+	printString("SENS:DLOG:TRAC:Y3:RANG:MAX 50\r\n");
 	Time::delay(big_delay);
-	//Pout
+	//Pout 3
 	Screen::displayStrings(PSTR("Setting Pout"));
 	printString("SENS:DLOG:TRAC:Y4:UNIT WATT\r\n");
 	Time::delay(small_delay);
@@ -424,9 +446,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y4:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y4:RANG:MAX 5000\r\n");
+	printString("SENS:DLOG:TRAC:Y4:RANG:MAX 50\r\n");
 	Time::delay(big_delay);
-	// Eout
+	// Eout 4
 	Screen::displayStrings(PSTR("Setting Eout"));
 	//printString("SENS:DLOG:TRAC:Y5:UNIT Ws\r\n");
 	//Time::delay(small_delay);
@@ -434,9 +456,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y5:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y5:RANG:MAX 5000\r\n");
+	printString("SENS:DLOG:TRAC:Y5:RANG:MAX 50\r\n");
 	Time::delay(big_delay);
-	// Temperature external
+	// Temperature external 5
 	Screen::displayStrings(PSTR("Setting T_ext"));
 	//printString("SENS:DLOG:TRAC:Y6:UNIT C\r\n");
 	printString("SENS:DLOG:TRAC:Y6:LAB \"Text\"\r\n");
@@ -445,7 +467,7 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y6:RANG:MAX 200\r\n");
 	Time::delay(big_delay);
-	// Temperature internal
+	// Temperature internal 6
 	Screen::displayStrings(PSTR("Setting T_int"));
 	//printString("SENS:DLOG:TRAC:Y7:UNIT C\r\n");
 	printString("SENS:DLOG:TRAC:Y7:LAB \"Tint\"\r\n");
@@ -454,7 +476,7 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y7:RANG:MAX 200\r\n");
 	Time::delay(big_delay);
-	// Vin
+	// Vin 7
 	Screen::displayStrings(PSTR("Setting Vin"));
 	printString("SENS:DLOG:TRAC:Y8:UNIT VOLT\r\n");
 	Time::delay(small_delay);
@@ -462,9 +484,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y8:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y8:RANG:MAX 12000\r\n");
+	printString("SENS:DLOG:TRAC:Y8:RANG:MAX 20\r\n");
 	Time::delay(big_delay);
-	// Rbat
+	// Rbat 8
 	Screen::displayStrings(PSTR("Setting Rbat"));
 	printString("SENS:DLOG:TRAC:Y9:UNIT OHM\r\n");
 	Time::delay(small_delay);
@@ -472,9 +494,9 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y9:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y9:RANG:MAX 100000\r\n");
+	printString("SENS:DLOG:TRAC:Y9:RANG:MAX 10\r\n");
 	Time::delay(big_delay);
-	// Rwire
+	// Rwire 9
 	Screen::displayStrings(PSTR("Setting Rwire"));
 	printString("SENS:DLOG:TRAC:Y10:UNIT OHM\r\n");
 	Time::delay(small_delay);
@@ -482,16 +504,16 @@ void dlogInit(){
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y10:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y10:RANG:MAX 100000\r\n");
+	printString("SENS:DLOG:TRAC:Y10:RANG:MAX 10\r\n");
 	Time::delay(big_delay);
-	// Charge percent
+	// Charge percent 10
 	Screen::displayStrings(PSTR("Setting charge %"));
 //	printString("SENS:DLOG:TRAC:Y11:UNIT %\r\n");
 	printString("SENS:DLOG:TRAC:Y11:LAB \"Charge\"\r\n");
 	Time::delay(small_delay);
 	printString("SENS:DLOG:TRAC:Y11:RANG:MIN 0\r\n");
 	Time::delay(small_delay);
-	printString("SENS:DLOG:TRAC:Y11:RANG:MAX 12000\r\n");
+	printString("SENS:DLOG:TRAC:Y11:RANG:MAX 100\r\n");
 	Time::delay(big_delay);
 
 	/*
