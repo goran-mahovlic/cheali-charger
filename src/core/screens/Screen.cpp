@@ -154,7 +154,7 @@ void Screen::displayScreenProgramCompleted()
 
 void Screen::displayMonitorError()
 {
-    screenEnd(PSTR("Dobrica request:"));
+    screenEnd(PSTR("Error:"));
 }
 
 
